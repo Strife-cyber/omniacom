@@ -13,3 +13,10 @@ export type {
   AuthContextType,
   AuthProviderProps,
 } from "./auth";
+
+export type {
+  PaginatedResponse,
+  CrudParams,
+  UseCrudOptions,
+  UseCrudReturn,
+} from "./crud";
