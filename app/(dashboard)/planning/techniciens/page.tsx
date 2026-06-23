@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Plus, Phone, Trash2, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, EmptyState } from "@/components/app/primitives/misc";
@@ -12,7 +12,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label, Select } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { TECHNICIEN_TONE, TECHNICIEN_STATUS_LABEL } from "@/lib/constants";
 import { initiales } from "@/lib/utils";
@@ -21,23 +21,24 @@ import type { Technicien, TechnicienStatus } from "@/types";
 const EMPTY = { nom: "", prenom: "", tel: "", status: "ACTIF" as TechnicienStatus };
 
 export default function TechniciensPage() {
-  const { data, loading, error } = useAsync(() => api.techniciens(), []);
-  const [items, setItems]       = useState<Technicien[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading, error } = useAsync(() => api.techniciens(), [refreshKey]);
   const [q, setQ]               = useState("");
   const [open, setOpen]         = useState(false);
   const [editItem, setEditItem] = useState<Technicien | null>(null);
   const [busy, setBusy]         = useState(false);
   const [form, setForm]         = useState(EMPTY);
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  const allItems = data ?? [];
   const filtered = useMemo(
-    () => items.filter((t) => `${t.prenom} ${t.nom}`.toLowerCase().includes(q.toLowerCase())),
-    [items, q],
+    () => allItems.filter((t) => `${t.prenom} ${t.nom}`.toLowerCase().includes(q.toLowerCase())),
+    [allItems, q],
   );
 
-  const actifs   = items.filter((t) => t.status === "ACTIF").length;
-  const inactifs = items.length - actifs;
+  const actifs   = allItems.filter((t) => t.status === "ACTIF").length;
+  const inactifs = allItems.length - actifs;
 
   function setF(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
 
@@ -57,14 +58,13 @@ export default function TechniciensPage() {
     try {
       const payload = { nom: form.nom, prenom: form.prenom, telephone: form.tel, status: form.status };
       if (editItem) {
-        const updated = await api.updateTechnicien(editItem.id, payload);
-        setItems((prev) => prev.map((t) => t.id === editItem.id ? { ...t, ...updated } : t));
+        await api.updateTechnicien(editItem.id, payload);
         toast.success("Technicien mis à jour.");
       } else {
-        const created = await api.createTechnicien(payload);
-        setItems((prev) => [...prev, created]);
+        await api.createTechnicien(payload);
         toast.success("Technicien ajouté avec succès.");
       }
+      refetch();
       closeModal();
     } catch {
       toast.error(editItem ? "Erreur lors de la modification." : "Erreur lors de l'ajout.");
@@ -77,7 +77,7 @@ export default function TechniciensPage() {
     if (!confirm(`Supprimer ${name} ?`)) return;
     try {
       await api.deleteTechnicien(id);
-      setItems((prev) => prev.filter((t) => t.id !== id));
+      refetch();
       toast.success(`${name} supprimé.`);
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -95,11 +95,11 @@ export default function TechniciensPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-line bg-surface p-4" style={{ boxShadow: "var(--shadow-card)" }}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Total</p>
-          <p className="mt-1 font-display text-3xl font-bold text-ink">{items.length}</p>
+          <p className="mt-1 font-display text-3xl font-bold text-ink">{allItems.length}</p>
         </div>
-        <div className="rounded-xl border border-[var(--color-ok)] bg-[var(--color-ok-soft)] p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ok)]">Actifs</p>
-          <p className="mt-1 font-display text-3xl font-bold text-[var(--color-ok)]">{actifs}</p>
+        <div className="rounded-xl border border-ok bg-ok-soft p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ok">Actifs</p>
+          <p className="mt-1 font-display text-3xl font-bold text-ok">{actifs}</p>
         </div>
         <div className="rounded-xl border border-line bg-canvas p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Inactifs</p>
@@ -117,7 +117,7 @@ export default function TechniciensPage() {
         {loading ? (
           <Loader />
         ) : error ? (
-          <p className="px-5 py-8 text-center text-sm text-[var(--color-danger)]">{error}</p>
+          <p className="px-5 py-8 text-center text-sm text-danger">{error}</p>
         ) : filtered.length === 0 ? (
           <EmptyState title="Aucun technicien trouvé" hint="Ajoutez votre premier technicien pour commencer." />
         ) : (
@@ -154,7 +154,7 @@ export default function TechniciensPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+                        className="text-danger hover:bg-danger-soft"
                         onClick={() => handleDelete(t.id, `${t.prenom} ${t.nom}`)}
                       >
                         <Trash2 />

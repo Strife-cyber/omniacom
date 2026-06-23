@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { MapPin, Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, EmptyState } from "@/components/app/primitives/misc";
@@ -10,17 +10,20 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 
 export default function AdminSitesPage() {
-  const { data, loading } = useAsync(() => api.sites(), []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading } = useAsync(() => api.sites(), [refreshKey]);
   const [q, setQ]         = useState("");
   const [open, setOpen]   = useState(false);
   const [busy, setBusy]   = useState(false);
   const [nom, setNom]           = useState("");
   const [localisation, setLoc]  = useState("");
   const [region, setRegion]     = useState("");
+
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const filtered = useMemo(
     () => (data ?? []).filter((s) =>
@@ -34,6 +37,7 @@ export default function AdminSitesPage() {
     setBusy(true);
     try {
       await api.createSite({ nom, localisation, region });
+      refetch();
       toast.success("Site créé.");
       setOpen(false);
       setNom(""); setLoc(""); setRegion("");
@@ -48,6 +52,7 @@ export default function AdminSitesPage() {
     if (!confirm(`Supprimer le site « ${name} » ?`)) return;
     try {
       await api.deleteSite(id);
+      refetch();
       toast.success(`Site « ${name} » supprimé.`);
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -93,7 +98,7 @@ export default function AdminSitesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+                        className="text-danger hover:bg-danger-soft"
                         onClick={() => handleDelete(s.id, s.nom)}
                       >
                         <Trash2 />

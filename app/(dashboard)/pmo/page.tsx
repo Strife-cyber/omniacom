@@ -4,7 +4,7 @@ import { Building2, CheckCircle2, Clock, Receipt, Wallet, AlertCircle, TrendingU
 import { PageHeader } from "@/components/app/primitives/misc";
 import { StatCard } from "@/components/app/primitives/StatCard";
 import { Loader } from "@/components/app/brand/Logo";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { formatMontant } from "@/lib/utils";
 

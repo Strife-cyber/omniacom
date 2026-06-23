@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Plus, FileDown, FileText, Pencil, Trash2, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, FilterPills, EmptyState } from "@/components/app/primitives/misc";
@@ -11,7 +11,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label, Select } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import {
   INTERVENTION_TONE,
@@ -33,11 +33,11 @@ const ALL_STATUTS: InterventionStatut[]   = ["PLANIFIE", "EN_COURS", "TERMINE", 
 const ALL_ACTIONS: InterventionTypeAction[] = ["MAINTENANCE", "DEPANNAGE", "INSTALLATION", "AUDIT"];
 
 export default function InterventionsPage() {
-  const { data, loading }         = useAsync(() => api.interventions(), []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading }         = useAsync(() => api.interventions(), [refreshKey]);
   const { data: sites }           = useAsync(() => api.sites(), []);
   const { data: techniciens }     = useAsync(() => api.techniciens(), []);
 
-  const [items, setItems]       = useState<Intervention[]>([]);
   const [q, setQ]               = useState("");
   const [filtre, setFiltre]     = useState<Filtre>("TOUS");
   const [open, setOpen]         = useState(false);
@@ -50,7 +50,7 @@ export default function InterventionsPage() {
   const [editStatut, setEditStatut] = useState<InterventionStatut>("PLANIFIE");
   const [editAction, setEditAction] = useState<InterventionTypeAction>("MAINTENANCE");
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   function getSiteNom(id: number) {
     return sites?.find((s) => s.id === id)?.nom ?? `Site #${id}`;
@@ -60,7 +60,7 @@ export default function InterventionsPage() {
   }
 
   const rows = useMemo(() => {
-    let r = items;
+    let r = data ?? [];
     if (filtre !== "TOUS") r = r.filter((i) => i.statut === (filtre as InterventionStatut));
     if (q) {
       const ql = q.toLowerCase();
@@ -72,7 +72,6 @@ export default function InterventionsPage() {
       });
     }
     return r;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, q, filtre, sites, techniciens]);
 
   function openEdit(i: Intervention) {
@@ -88,8 +87,8 @@ export default function InterventionsPage() {
     if (!editItem) return;
     setBusy(true);
     try {
-      const updated = await api.updateIntervention(editItem.id, { statut: editStatut, typeAction: editAction });
-      setItems((prev) => prev.map((i) => i.id === editItem.id ? { ...i, ...updated } : i));
+      await api.updateIntervention(editItem.id, { statut: editStatut, typeAction: editAction });
+      refetch();
       toast.success("Intervention mise à jour.");
       closeEdit();
     } catch {
@@ -123,7 +122,7 @@ export default function InterventionsPage() {
     if (!confirm("Supprimer cette intervention ?")) return;
     try {
       await api.deleteIntervention(id);
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      refetch();
       toast.success("Intervention supprimée.");
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -243,7 +242,7 @@ export default function InterventionsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+                          className="text-danger hover:bg-danger-soft"
                           onClick={() => handleDelete(i.id)}
                         >
                           <Trash2 />

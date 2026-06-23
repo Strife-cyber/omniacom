@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,10 +12,9 @@ import { Input, Label } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { EmptyState } from "@/components/app/primitives/misc";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { formatMontant, formatDateShort } from "@/lib/utils";
-import type { LigneFacturation } from "@/types";
 
 const STATUT_PAIEMENT_LABEL: Record<string, string> = {
   PAYE:       "Payé",
@@ -34,14 +33,15 @@ export default function BonCommandeDetailPage() {
   const id = Number(params.id);
 
   const { data: bc,    loading: lb } = useAsync(() => api.bonCommande(id), [id]);
-  const { data: ldata, loading: ll } = useAsync(() => api.lignesFacturation(id), [id]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data: ldata, loading: ll } = useAsync(() => api.lignesFacturation(id), [id, refreshKey]);
 
-  const [lignes, setLignes] = useState<LigneFacturation[]>([]);
+  const lignes = ldata ?? [];
   const [openModal, setOpenModal] = useState(false);
   const [busy, setBusy]           = useState(false);
   const [form, setForm]           = useState({ description: "", montantHt: "", dateFacture: "", statutPaiement: "EN_ATTENTE" });
 
-  useEffect(() => { if (ldata) setLignes(ldata); }, [ldata]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
 
@@ -49,14 +49,14 @@ export default function BonCommandeDetailPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const created = await api.createLigneFacturation({
+      await api.createLigneFacturation({
         bonDeCommandeId: id,
         montantHt:       Number(form.montantHt) || 0,
         dateFacture:     form.dateFacture || undefined,
         description:     form.description || undefined,
         statutPaiement:  form.statutPaiement,
       });
-      setLignes((prev) => [...prev, created]);
+      refetch();
       toast.success("Ligne ajoutée.");
       setOpenModal(false);
       setForm({ description: "", montantHt: "", dateFacture: "", statutPaiement: "EN_ATTENTE" });
@@ -71,7 +71,7 @@ export default function BonCommandeDetailPage() {
     if (!confirm("Supprimer cette ligne de facturation ?")) return;
     try {
       await api.deleteLigneFacturation(ligneId);
-      setLignes((prev) => prev.filter((l) => l.id !== ligneId));
+      refetch();
       toast.success("Ligne supprimée.");
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -90,7 +90,7 @@ export default function BonCommandeDetailPage() {
           <ArrowLeft className="size-5" />
         </button>
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink font-mono">{bc.numeroBc}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{bc.numeroBc}</h1>
           <p className="text-sm text-muted">{bc.projetAssocie ?? "Aucun projet associé"}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">

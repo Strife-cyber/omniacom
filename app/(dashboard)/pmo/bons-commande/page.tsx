@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Receipt, Plus, Eye, Trash2, Pencil, Wallet, CheckCircle2, Clock, FileDown, FileText } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { formatMontant } from "@/lib/utils";
 import type { BonDeCommande } from "@/types";
@@ -21,25 +21,29 @@ import type { BonDeCommande } from "@/types";
 const EMPTY = { numeroBc: "", projetAssocie: "", chantierId: "", montantPo: "", montantFacture: "", montantRestant: "" };
 
 export default function BonsCommandePage() {
-  const { data, loading } = useAsync(() => api.bonsCommande(), []);
-  const [items, setItems] = useState<BonDeCommande[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading } = useAsync(() => api.bonsCommande(), [refreshKey]);
   const [open, setOpen]     = useState(false);
   const [editItem, setEditItem] = useState<BonDeCommande | null>(null);
   const [busy, setBusy]     = useState(false);
   const [q, setQ]           = useState("");
   const [form, setForm]     = useState(EMPTY);
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
-  const rows = items.filter((b) =>
-    `${b.numeroBc} ${b.projetAssocie ?? ""}`.toLowerCase().includes(q.toLowerCase()),
+  const allItems = data ?? [];
+  const rows = useMemo(
+    () => allItems.filter((b) =>
+      `${b.numeroBc} ${b.projetAssocie ?? ""}`.toLowerCase().includes(q.toLowerCase()),
+    ),
+    [allItems, q],
   );
 
-  const totalPO       = items.reduce((s, b) => s + b.montantPo, 0);
-  const totalFacture  = items.reduce((s, b) => s + b.montantFacture, 0);
-  const totalRestant  = items.reduce((s, b) => s + b.montantRestant, 0);
+  const totalPO       = allItems.reduce((s, b) => s + b.montantPo, 0);
+  const totalFacture  = allItems.reduce((s, b) => s + b.montantFacture, 0);
+  const totalRestant  = allItems.reduce((s, b) => s + b.montantRestant, 0);
   const tauxFactu     = totalPO ? (totalFacture / totalPO) * 100 : 0;
-  const nbSoldes      = items.filter((b) => b.montantRestant === 0).length;
+  const nbSoldes      = allItems.filter((b) => b.montantRestant === 0).length;
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
   function resetForm() { setForm(EMPTY); }
@@ -106,14 +110,13 @@ export default function BonsCommandePage() {
     };
     try {
       if (editItem) {
-        const updated = await api.updateBonCommande(editItem.id, payload);
-        setItems((prev) => prev.map((b) => b.id === editItem.id ? { ...b, ...updated } : b));
+        await api.updateBonCommande(editItem.id, payload);
         toast.success("Bon de commande mis à jour.");
       } else {
-        const created = await api.createBonCommande(payload);
-        setItems((prev) => [...prev, created]);
+        await api.createBonCommande(payload);
         toast.success("Bon de commande créé.");
       }
+      refetch();
       closeModal();
     } catch {
       toast.error(editItem ? "Erreur lors de la modification." : "Erreur lors de la création.");
@@ -126,7 +129,7 @@ export default function BonsCommandePage() {
     if (!confirm(`Supprimer le bon de commande « ${num} » ?`)) return;
     try {
       await api.deleteBonCommande(id);
-      setItems((prev) => prev.filter((b) => b.id !== id));
+      refetch();
       toast.success("Bon de commande supprimé.");
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -186,7 +189,7 @@ export default function BonsCommandePage() {
                       <TD className="text-right tabular">{formatMontant(b.montantPo)}</TD>
                       <TD className="text-right tabular">{formatMontant(b.montantFacture)}</TD>
                       <TD className="text-right tabular font-medium">
-                        <span className={solde ? "text-[var(--color-ok)]" : "text-[var(--color-warn)]"}>
+                        <span className={solde ? "text-ok" : "text-warn"}>
                           {formatMontant(b.montantRestant)}
                         </span>
                       </TD>

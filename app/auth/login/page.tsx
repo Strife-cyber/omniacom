@@ -26,9 +26,24 @@ export default function Login() {
         setIsLoggingIn(true);
 
         try {
-            await login(email, password);
-            // TODO: Let login redirect to the corresponding dashboard based on the user role
-            router.push("/");
+            const user = await login(email, password);
+
+            switch (user.role) {
+                case "GESTIONNAIRE_PLANNING":
+                    router.push("/planning");
+                    break;
+                case "GESTIONNAIRE_EPI":
+                    router.push("/epi");
+                    break;
+                case "PMO":
+                    router.push("/pmo");
+                    break;
+                case "ADMIN":
+                    router.push("/admin");
+                    break;
+                default:
+                    router.push("/");
+            }
         } catch (err) {
             setError(
                 err instanceof Error

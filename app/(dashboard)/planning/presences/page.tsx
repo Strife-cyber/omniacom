@@ -8,7 +8,7 @@ import { Card } from "@/components/app/primitives/Card";
 import { Button } from "@/components/app/primitives/Button";
 import { Avatar } from "@/components/app/primitives/Avatar";
 import { Loader } from "@/components/app/brand/Logo";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { PRESENCE_TONE, PRESENCE_STATUT_LABEL } from "@/lib/constants";
 import { initiales, cn } from "@/lib/utils";
@@ -105,8 +105,8 @@ export default function PresencesPage() {
           />
         </div>
         <div className="ml-auto flex gap-4 text-sm">
-          <span className="text-[var(--color-ok)]"><b className="tabular">{presents}</b> présents</span>
-          <span className="text-[var(--color-danger)]"><b className="tabular">{absents}</b> absents</span>
+          <span className="text-ok"><b className="tabular">{presents}</b> présents</span>
+          <span className="text-danger"><b className="tabular">{absents}</b> absents</span>
         </div>
       </Card>
 

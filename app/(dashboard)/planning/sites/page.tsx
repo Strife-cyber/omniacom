@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Plus, MapPin, History, Pencil, Trash2, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, EmptyState } from "@/components/app/primitives/misc";
@@ -11,7 +11,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { INTERVENTION_TONE, INTERVENTION_STATUT_LABEL, INTERVENTION_TYPE_LABEL } from "@/lib/constants";
 import { formatDateShort } from "@/lib/utils";
@@ -20,9 +20,9 @@ import type { Site } from "@/types";
 const EMPTY = { nom: "", localisation: "", region: "" };
 
 export default function SitesPage() {
-  const { data, loading }           = useAsync(() => api.sites(), []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading }           = useAsync(() => api.sites(), [refreshKey]);
   const { data: interventions }     = useAsync(() => api.interventions(), []);
-  const [items, setItems]           = useState<Site[]>([]);
   const [q, setQ]                   = useState("");
   const [open, setOpen]             = useState(false);
   const [editItem, setEditItem]     = useState<Site | null>(null);
@@ -30,13 +30,13 @@ export default function SitesPage() {
   const [busy, setBusy]             = useState(false);
   const [form, setForm]             = useState(EMPTY);
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const filtered = useMemo(
-    () => items.filter((s) =>
+    () => (data ?? []).filter((s) =>
       `${s.nom} ${s.region} ${s.localisation}`.toLowerCase().includes(q.toLowerCase()),
     ),
-    [items, q],
+    [data, q],
   );
 
   const histoInterventions = useMemo(
@@ -61,14 +61,13 @@ export default function SitesPage() {
     setBusy(true);
     try {
       if (editItem) {
-        const updated = await api.updateSite(editItem.id, form);
-        setItems((prev) => prev.map((s) => s.id === editItem.id ? { ...s, ...updated } : s));
+        await api.updateSite(editItem.id, form);
         toast.success("Site mis à jour.");
       } else {
-        const created = await api.createSite(form);
-        setItems((prev) => [...prev, created]);
+        await api.createSite(form);
         toast.success("Site ajouté.");
       }
+      refetch();
       closeModal();
     } catch {
       toast.error(editItem ? "Erreur lors de la modification." : "Erreur lors de l'ajout du site.");
@@ -81,7 +80,7 @@ export default function SitesPage() {
     if (!confirm(`Supprimer le site « ${name} » ?`)) return;
     try {
       await api.deleteSite(id);
-      setItems((prev) => prev.filter((s) => s.id !== id));
+      refetch();
       toast.success(`Site « ${name} » supprimé.`);
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -130,7 +129,7 @@ export default function SitesPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+                    className="text-danger hover:bg-danger-soft"
                     onClick={() => handleDelete(s.id, s.nom)}
                   >
                     <Trash2 />

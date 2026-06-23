@@ -7,8 +7,12 @@ import { PageHeader } from "@/components/app/primitives/misc";
 import { Card, CardHeader } from "@/components/app/primitives/Card";
 import { Button } from "@/components/app/primitives/Button";
 import { Input, Label } from "@/components/app/primitives/Input";
+import { Loader } from "@/components/app/brand/Logo";
+import { useAsync } from "@/hooks/use-async";
+import { api } from "@/lib/api";
 
 export default function SettingsPage() {
+  const { data, loading } = useAsync(() => api.getSettings(), []);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     appName:       "OMNIACOM",
@@ -18,15 +22,34 @@ export default function SettingsPage() {
     emailNoreply:  "noreply@omniacom.cm",
   });
 
+  // Hydrate form once when API data arrives
+  if (data && form.appName === "OMNIACOM" && !data.appName?.startsWith?.("OMNIACOM")) {
+    setForm((prev) => ({
+      ...prev,
+      appName:      data.appName ?? prev.appName,
+      sessionDuree: data.sessionDuree ?? prev.sessionDuree,
+      elementsPage: data.elementsPage ?? prev.elementsPage,
+      emailSupport: data.emailSupport ?? prev.emailSupport,
+      emailNoreply: data.emailNoreply ?? prev.emailNoreply,
+    }));
+  }
+
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
 
   async function handleSave(e: { preventDefault(): void }) {
     e.preventDefault();
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setBusy(false);
-    toast.success("Paramètres enregistrés.");
+    try {
+      await api.updateSettings(form);
+      toast.success("Paramètres enregistrés.");
+    } catch {
+      toast.error("Erreur lors de l'enregistrement des paramètres.");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  if (loading) return <Loader label="Chargement des paramètres…" />;
 
   return (
     <>
@@ -42,7 +65,7 @@ export default function SettingsPage() {
           <CardHeader title="Général" icon={<Settings />} />
           <div className="border-t border-line px-5 py-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <Label>Nom de l'application</Label>
+              <Label>Nom de l&apos;application</Label>
               <Input value={form.appName} onChange={(e) => set("appName", e.target.value)} placeholder="OMNIACOM" />
             </div>
             <div>
@@ -53,7 +76,7 @@ export default function SettingsPage() {
                 onChange={(e) => set("sessionDuree", e.target.value)}
                 placeholder="8"
               />
-              <p className="mt-1 text-xs text-muted">L'utilisateur sera déconnecté après ce délai d'inactivité.</p>
+              <p className="mt-1 text-xs text-muted">L&apos;utilisateur sera déconnecté après ce délai d&apos;inactivité.</p>
             </div>
             <div>
               <Label>Éléments par page (tableau)</Label>
