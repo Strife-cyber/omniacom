@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Building2, Plus, Pencil, Trash2, Eye, FileDown, FileText } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label, Select } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { CHANTIER_TONE, CHANTIER_STATUS_LABEL } from "@/lib/constants";
 import { formatDateShort } from "@/lib/utils";
@@ -25,18 +25,22 @@ const EMPTY: Omit<Chantier, "id" | "etapes" | "bonsDeCommande"> = {
 };
 
 export default function ChantiersPage() {
-  const { data, loading } = useAsync(() => api.chantiers(), []);
-  const [items, setItems]   = useState<Chantier[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading } = useAsync(() => api.chantiers(), [refreshKey]);
   const [open, setOpen]     = useState(false);
   const [editItem, setEditItem] = useState<Chantier | null>(null);
   const [busy, setBusy]     = useState(false);
   const [q, setQ]           = useState("");
   const [form, setForm]     = useState({ ...EMPTY, avancementPlanifie: "", avancementReel: "", dateGo: "" });
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
-  const rows = items.filter((c) =>
-    `${c.nomSite} ${c.codeSite} ${c.entreprise}`.toLowerCase().includes(q.toLowerCase()),
+  const allItems = data ?? [];
+  const rows = useMemo(
+    () => allItems.filter((c) =>
+      `${c.nomSite} ${c.codeSite} ${c.entreprise}`.toLowerCase().includes(q.toLowerCase()),
+    ),
+    [allItems, q],
   );
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
@@ -73,14 +77,13 @@ export default function ChantiersPage() {
     };
     try {
       if (editItem) {
-        const updated = await api.updateChantier(editItem.id, payload);
-        setItems((prev) => prev.map((c) => c.id === editItem.id ? { ...c, ...updated } : c));
+        await api.updateChantier(editItem.id, payload);
         toast.success("Chantier mis à jour.");
       } else {
-        const created = await api.createChantier(payload);
-        setItems((prev) => [...prev, created]);
+        await api.createChantier(payload);
         toast.success("Chantier créé.");
       }
+      refetch();
       closeModal();
     } catch {
       toast.error(editItem ? "Erreur lors de la modification." : "Erreur lors de la création.");
@@ -129,7 +132,7 @@ export default function ChantiersPage() {
     if (!confirm(`Supprimer le chantier « ${nom} » ?`)) return;
     try {
       await api.deleteChantier(id);
-      setItems((prev) => prev.filter((c) => c.id !== id));
+      refetch();
       toast.success("Chantier supprimé.");
     } catch {
       toast.error("Erreur lors de la suppression.");

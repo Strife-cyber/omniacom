@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/app/primitives/Card";
 import { Badge } from "@/components/app/primitives/Badge";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { ROLE_LABEL, ROLE_TONE } from "@/lib/constants";
 import { formatDateShort } from "@/lib/utils";

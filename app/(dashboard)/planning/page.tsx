@@ -10,11 +10,10 @@ import { Avatar } from "@/components/app/primitives/Avatar";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
 import { PresenceChart } from "@/components/app/charts/PresenceChart";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { PRESENCE_TONE, PRESENCE_STATUT_LABEL } from "@/lib/constants";
 import { initiales, formatDate } from "@/lib/utils";
-import { MOCK_PRESENCE_SERIE } from "@/lib/mock-data";
 import type { PresenceStatut } from "@/types";
 
 export default function PlanningDashboard() {
@@ -66,7 +65,7 @@ export default function PlanningDashboard() {
         <Card>
           <CardHeader title="Évolution des présences (7 derniers jours)" icon={<UserCheck />} />
           <div className="px-5 pb-5">
-            <PresenceChart data={MOCK_PRESENCE_SERIE} />
+            <PresenceChart data={[]} />
           </div>
         </Card>
 

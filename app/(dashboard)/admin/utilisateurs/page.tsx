@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { UserPlus, Plus, Pencil, Trash2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, EmptyState } from "@/components/app/primitives/misc";
@@ -12,29 +12,29 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label, Select } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { ROLE_LABEL, ROLE_TONE } from "@/lib/constants";
 import { initiales, relativeTime } from "@/lib/utils";
 import type { Role, User } from "@/types";
 
-const ROLES: Role[] = ["GESTIONNAIRE_PLANNING", "GESTIONNAIRE_EPI", "PMO", "ADMIN"];
-
 const EMPTY_FORM = { nom: "", prenom: "", email: "", role: "GESTIONNAIRE_PLANNING" as Role, mdp: "" };
+const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 export default function UtilisateursPage() {
-  const { data, loading, error } = useAsync(() => api.users(), []);
-  const [items, setItems]   = useState<User[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading, error } = useAsync(() => api.users(), [refreshKey]);
   const [open, setOpen]     = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [busy, setBusy]     = useState(false);
   const [q, setQ]           = useState("");
   const [form, setForm]     = useState(EMPTY_FORM);
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
-
-  const rows = items.filter((u) =>
-    `${u.nom} ${u.prenom ?? ""} ${u.email}`.toLowerCase().includes(q.toLowerCase()),
+  const rows = useMemo(
+    () => (data ?? []).filter((u) =>
+      `${u.nom} ${u.prenom ?? ""} ${u.email}`.toLowerCase().includes(q.toLowerCase()),
+    ),
+    [data, q],
   );
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
@@ -53,23 +53,24 @@ export default function UtilisateursPage() {
 
   function closeModal() { setOpen(false); setEditUser(null); setForm(EMPTY_FORM); }
 
+  function refetch() { setRefreshKey((k) => k + 1); }
+
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setBusy(true);
     try {
       if (editUser) {
-        const updated = await api.updateUser(editUser.id, {
+        await api.updateUser(editUser.id, {
           nom: form.nom, prenom: form.prenom || undefined, email: form.email, role: form.role,
         });
-        setItems((prev) => prev.map((u) => u.id === editUser.id ? updated : u));
         toast.success("Utilisateur mis à jour.");
       } else {
-        const created = await api.createUser({
+        await api.createUser({
           nom: form.nom, email: form.email, role: form.role, motDePasse: form.mdp,
         });
-        setItems((prev) => [...prev, created]);
         toast.success("Utilisateur créé avec succès.");
       }
+      refetch();
       closeModal();
     } catch {
       toast.error(editUser ? "Erreur lors de la modification." : "Erreur lors de la création.");
@@ -82,7 +83,7 @@ export default function UtilisateursPage() {
     if (!confirm(`Supprimer ${name} ?`)) return;
     try {
       await api.deleteUser(id);
-      setItems((prev) => prev.filter((u) => u.id !== id));
+      refetch();
       toast.success(`${name} supprimé.`);
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -107,7 +108,7 @@ export default function UtilisateursPage() {
           {loading ? (
             <Loader />
           ) : error ? (
-            <p className="px-5 py-8 text-center text-sm text-[var(--color-danger)]">{error}</p>
+            <p className="px-5 py-8 text-center text-sm text-danger">{error}</p>
           ) : rows.length === 0 ? (
             <EmptyState title="Aucun utilisateur" hint="Cliquez sur « Créer un utilisateur » pour commencer." />
           ) : (

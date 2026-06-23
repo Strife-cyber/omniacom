@@ -2,13 +2,17 @@
 // Types du module d'authentification
 // ---------------------------------------------------------------------------
 
+export type UserRole = "GESTIONNAIRE_PLANNING" | "GESTIONNAIRE_EPI" | "PMO" | "ADMIN" | "UTILISATEUR";
+
 /** Utilisateur retourne par l'API. */
 export interface User {
   id: string | number;
   email: string;
-  name: string;
+  nom: string;
+  role: UserRole;
   avatar_url?: string;
-  created_at: string;
+  createdAt: string;
+  updatedAt: string;  
 }
 
 /** Payload de connexion. */

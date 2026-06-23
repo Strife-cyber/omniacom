@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Plus, ShieldCheck, Trash2, Pencil, FileDown, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchInput, FilterPills, EmptyState } from "@/components/app/primitives/misc";
@@ -11,7 +11,7 @@ import { Modal } from "@/components/app/primitives/Modal";
 import { Input, Label } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { EPI_TONE, EPI_STATUT_LABEL } from "@/lib/constants";
 import { formatDateShort } from "@/lib/utils";
@@ -21,8 +21,8 @@ const FILTRES = ["Tous", "En retard", "À jour"] as const;
 const EMPTY_FORM = { techId: "", derniere: "", demande: "", envoi: "" };
 
 export default function VerificationsPage() {
-  const { data, loading } = useAsync(() => api.verifications(), []);
-  const [items, setItems]       = useState<VerificationEpi[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, loading } = useAsync(() => api.verifications(), [refreshKey]);
   const [q, setQ]               = useState("");
   const [filtre, setFiltre]     = useState<(typeof FILTRES)[number]>("Tous");
   const [open, setOpen]         = useState(false);
@@ -30,10 +30,10 @@ export default function VerificationsPage() {
   const [busy, setBusy]         = useState(false);
   const [form, setForm]         = useState(EMPTY_FORM);
 
-  useEffect(() => { if (data) setItems(data); }, [data]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const rows = useMemo(() => {
-    let r = items;
+    let r = data ?? [];
     if (filtre === "En retard") r = r.filter((v) => v.statut !== "CONFORME");
     if (filtre === "À jour")    r = r.filter((v) => v.statut === "CONFORME");
     if (q) {
@@ -43,7 +43,7 @@ export default function VerificationsPage() {
       });
     }
     return r;
-  }, [items, q, filtre]);
+  }, [data, q, filtre]);
 
   function setF(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
 
@@ -84,11 +84,11 @@ export default function VerificationsPage() {
       const payload = computePayload();
       if (editItem) {
         const updated = await api.updateVerification(editItem.id, payload);
-        setItems((prev) => prev.map((v) => v.id === editItem.id ? { ...v, ...updated } : v));
+        refetch();
         toast.success("Vérification mise à jour.");
       } else {
         const created = await api.createVerification(payload);
-        setItems((prev) => [...prev, created]);
+        refetch();
         toast.success("Vérification enregistrée.");
       }
       closeModal();
@@ -103,7 +103,7 @@ export default function VerificationsPage() {
     if (!confirm("Supprimer cette vérification ?")) return;
     try {
       await api.deleteVerification(id);
-      setItems((prev) => prev.filter((v) => v.id !== id));
+      refetch();
       toast.success("Vérification supprimée.");
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -200,9 +200,9 @@ export default function VerificationsPage() {
                     <TD className="tabular">{formatDateShort(v.dateDerniereVerif)}</TD>
                     <TD className="tabular">
                       {v.joursRetard > 0 ? (
-                        <span className="font-semibold text-[var(--color-warn)]">{v.joursRetard} j</span>
+                        <span className="font-semibold text-warn">{v.joursRetard} j</span>
                       ) : (
-                        <span className="text-[var(--color-ok)]">0 j</span>
+                        <span className="text-ok">0 j</span>
                       )}
                     </TD>
                     <TD className="tabular">{formatDateShort(v.prochaineDate)}</TD>

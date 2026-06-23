@@ -8,7 +8,7 @@ import { Badge } from "@/components/app/primitives/Badge";
 import { Card, CardHeader } from "@/components/app/primitives/Card";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { EPI_TONE, EPI_STATUT_LABEL } from "@/lib/constants";
 import { formatDateShort } from "@/lib/utils";
@@ -63,7 +63,7 @@ export default function EpiDashboard() {
             Alertes actives ({alertes.length})
           </p>
           <Card>
-            <CardHeader title="Techniciens nécessitant une action" icon={<AlertTriangle className="text-[var(--color-warn)]" />} />
+            <CardHeader title="Techniciens nécessitant une action" icon={<AlertTriangle className="text-warn" />} />
             <div className="border-t border-line">
               <Table>
                 <THead>
@@ -83,7 +83,7 @@ export default function EpiDashboard() {
                         <TD className="font-semibold text-ink">{nom}</TD>
                         <TD className="tabular text-muted">{formatDateShort(v.dateDerniereVerif)}</TD>
                         <TD className="tabular">
-                          <span className="font-semibold text-[var(--color-warn)]">{v.joursRetard} j</span>
+                          <span className="font-semibold text-warn">{v.joursRetard} j</span>
                         </TD>
                         <TD className="tabular text-muted">{formatDateShort(v.prochaineDate)}</TD>
                         <TD>
@@ -107,9 +107,9 @@ export default function EpiDashboard() {
       )}
 
       {alertes.length === 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-ok)] bg-[var(--color-ok)]/5 px-5 py-4">
-          <ShieldCheck className="size-5 text-[var(--color-ok)]" />
-          <p className="text-sm font-medium text-[var(--color-ok)]">Tous les techniciens sont à jour — aucune alerte active.</p>
+        <div className="flex items-center gap-3 rounded-xl border border-ok bg-ok/5 px-5 py-4">
+          <ShieldCheck className="size-5 text-ok" />
+          <p className="text-sm font-medium text-ok">Tous les techniciens sont à jour — aucune alerte active.</p>
         </div>
       )}
     </>

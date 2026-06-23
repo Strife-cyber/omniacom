@@ -6,7 +6,7 @@ import { Card } from "@/components/app/primitives/Card";
 import { Avatar } from "@/components/app/primitives/Avatar";
 import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { initiales } from "@/lib/utils";
 

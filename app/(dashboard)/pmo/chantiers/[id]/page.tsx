@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ClipboardList, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,11 +12,11 @@ import { Input, Label, Select } from "@/components/app/primitives/Input";
 import { Loader } from "@/components/app/brand/Logo";
 import { EmptyState } from "@/components/app/primitives/misc";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
-import { useAsync } from "@/hooks/useAsync";
+import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
 import { CHANTIER_TONE, CHANTIER_STATUS_LABEL, ETAPE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateShort, calcEcart } from "@/lib/utils";
-import type { EtapeChantier, EtapeChantierStatus } from "@/types";
+import type { EtapeChantierStatus } from "@/types";
 
 const ETAPE_TONE: Record<EtapeChantierStatus, "ok" | "warn" | "danger" | "info" | "rest"> = {
   EN_ATTENTE: "rest",
@@ -28,8 +28,8 @@ const ETAPE_STATUTS: EtapeChantierStatus[] = ["EN_ATTENTE", "EN_COURS", "TERMINE
 
 function EcartBadge({ jours }: { jours?: number }) {
   if (jours === undefined) return <span className="text-faint">—</span>;
-  if (jours > 0) return <span className="font-semibold text-[var(--color-danger)]">+{jours} j</span>;
-  if (jours < 0) return <span className="font-semibold text-[var(--color-ok)]">{jours} j</span>;
+  if (jours > 0) return <span className="font-semibold text-danger">+{jours} j</span>;
+  if (jours < 0) return <span className="font-semibold text-ok">{jours} j</span>;
   return <span className="text-muted">0 j</span>;
 }
 
@@ -39,14 +39,14 @@ export default function ChantierDetailPage() {
   const id = Number(params.id);
 
   const { data: chantier, loading: lc } = useAsync(() => api.chantier(id), [id]);
-  const { data: etapesData, loading: le } = useAsync(() => api.etapesChantier(id), [id]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data: etapes, loading: le } = useAsync(() => api.etapesChantier(id), [id, refreshKey]);
 
-  const [etapes, setEtapes] = useState<EtapeChantier[]>([]);
   const [openModal, setOpenModal] = useState(false);
   const [busy, setBusy]           = useState(false);
   const [form, setForm]           = useState({ nomEtape: "", datePlanifiee: "", status: "EN_ATTENTE" as EtapeChantierStatus });
 
-  useEffect(() => { if (etapesData) setEtapes(etapesData); }, [etapesData]);
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
 
@@ -54,13 +54,13 @@ export default function ChantierDetailPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const created = await api.createEtapeChantier({
+      await api.createEtapeChantier({
         chantierId:    id,
         nomEtape:      form.nomEtape,
         datePlanifiee: form.datePlanifiee || undefined,
         status:        form.status,
       });
-      setEtapes((prev) => [...prev, created]);
+      refetch();
       toast.success("Étape ajoutée.");
       setOpenModal(false);
       setForm({ nomEtape: "", datePlanifiee: "", status: "EN_ATTENTE" });
@@ -75,7 +75,7 @@ export default function ChantierDetailPage() {
     if (!confirm(`Supprimer l'étape « ${nom} » ?`)) return;
     try {
       await api.deleteEtapeChantier(etapeId);
-      setEtapes((prev) => prev.filter((e) => e.id !== etapeId));
+      refetch();
       toast.success("Étape supprimée.");
     } catch {
       toast.error("Erreur lors de la suppression.");
@@ -140,7 +140,7 @@ export default function ChantierDetailPage() {
         <div className="border-t border-line">
           {le ? (
             <Loader />
-          ) : etapes.length === 0 ? (
+          ) : (etapes ?? []).length === 0 ? (
             <EmptyState title="Aucune étape" hint="Ajoutez des étapes pour suivre l'avancement." />
           ) : (
             <Table>
@@ -153,7 +153,7 @@ export default function ChantierDetailPage() {
                 <TH className="text-right">Actions</TH>
               </THead>
               <TBody>
-                {etapes.map((e) => (
+                {(etapes ?? []).map((e) => (
                   <TR key={e.id}>
                     <TD className="font-medium text-ink">{e.nomEtape}</TD>
                     <TD>
@@ -183,7 +183,7 @@ export default function ChantierDetailPage() {
       <Modal open={openModal} onClose={() => setOpenModal(false)} title="Ajouter une étape">
         <form className="flex flex-col gap-4" onSubmit={handleAddEtape}>
           <div>
-            <Label>Nom de l'étape</Label>
+            <Label>Nom de l&apos;étape</Label>
             <Input value={form.nomEtape} onChange={(e) => set("nomEtape", e.target.value)} placeholder="APD submission" required />
           </div>
           <div className="grid grid-cols-2 gap-4">
