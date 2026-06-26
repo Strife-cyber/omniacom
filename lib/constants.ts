@@ -10,6 +10,7 @@ import {
   UserCog,
   ScrollText,
   Settings,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -42,8 +43,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   PMO: [
     { label: "Dashboard",         href: "/pmo",                 icon: LayoutDashboard },
+    { label: "Suivi quotidien",   href: "/pmo/suivi-quotidien", icon: ClipboardList   },
     { label: "Chantiers",         href: "/pmo/chantiers",       icon: Building2       },
     { label: "Bons de commande",  href: "/pmo/bons-commande",   icon: Receipt         },
+    { label: "Suivi paiement",    href: "/pmo/suivi-paiement",  icon: Wallet          },
   ],
   ADMIN: [
     { label: "Utilisateurs", href: "/admin/utilisateurs",  icon: UserCog         },
@@ -120,6 +123,7 @@ export const ETAPE_STATUS_LABEL: Record<EtapeChantierStatus, string> = {
   EN_COURS:   "En cours",
   TERMINE:    "Terminé",
   EN_RETARD:  "En retard",
+  NON_APPLICABLE: "N/A",
 };
 
 // --- Variantes de couleur pour les badges ---
