@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { formatMontant } from "@/lib/utils";
 import type { BonDeCommande } from "@/types";
 
-const EMPTY = { numeroBc: "", projetAssocie: "", chantierId: "", montantPo: "", montantFacture: "", montantRestant: "" };
+const EMPTY = { numeroBc: "", projetAssocie: "", montantPo: "", montantFacture: "", montantRestant: "" };
 
 export default function BonsCommandePage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -55,7 +55,6 @@ export default function BonsCommandePage() {
     setForm({
       numeroBc:       b.numeroBc,
       projetAssocie:  b.projetAssocie ?? "",
-      chantierId:     String(b.chantierId),
       montantPo:      String(b.montantPo),
       montantFacture: String(b.montantFacture),
       montantRestant: String(b.montantRestant),
@@ -101,7 +100,6 @@ export default function BonsCommandePage() {
     e.preventDefault();
     setBusy(true);
     const payload = {
-      chantierId:     Number(form.chantierId) || 0,
       numeroBc:       form.numeroBc,
       projetAssocie:  form.projetAssocie || undefined,
       montantPo:      Number(form.montantPo)      || 0,
@@ -233,10 +231,6 @@ export default function BonsCommandePage() {
               <Label>Projet associé</Label>
               <Input value={form.projetAssocie} onChange={(e) => set("projetAssocie", e.target.value)} placeholder="Extension Réseau Sud" />
             </div>
-          </div>
-          <div>
-            <Label>ID Chantier</Label>
-            <Input type="number" value={form.chantierId} onChange={(e) => set("chantierId", e.target.value)} placeholder="1" />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>

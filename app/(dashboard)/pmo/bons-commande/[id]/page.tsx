@@ -17,11 +17,15 @@ import { api } from "@/lib/api";
 import { formatMontant, formatDateShort } from "@/lib/utils";
 
 const STATUT_PAIEMENT_LABEL: Record<string, string> = {
+  PAID:       "Payé",
+  NOT_PAID:   "Non payé",
   PAYE:       "Payé",
   EN_ATTENTE: "En attente",
   ANNULE:     "Annulé",
 };
 const STATUT_PAIEMENT_TONE: Record<string, "ok" | "warn" | "danger"> = {
+  PAID:       "ok",
+  NOT_PAID:   "warn",
   PAYE:       "ok",
   EN_ATTENTE: "warn",
   ANNULE:     "danger",
@@ -54,7 +58,7 @@ export default function BonCommandeDetailPage() {
         montantHt:       Number(form.montantHt) || 0,
         dateFacture:     form.dateFacture || undefined,
         description:     form.description || undefined,
-        statutPaiement:  form.statutPaiement,
+        statutPaiement:  form.statutPaiement === "PAYE" ? "PAID" : form.statutPaiement === "EN_ATTENTE" ? "NOT_PAID" : form.statutPaiement,
       });
       refetch();
       toast.success("Ligne ajoutée.");
