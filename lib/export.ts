@@ -3,6 +3,8 @@
  * Fonctions async pour éviter les problèmes de bundle SSR avec Next.js.
  */
 
+import { formatMontant, isBcSolde } from "@/lib/utils";
+
 /** Export en fichier Excel (.xlsx) — sans style. */
 export async function exportExcel(
   rows: Record<string, string | number>[],
@@ -134,13 +136,13 @@ export async function generateBcPdf(
   bc: {
     numeroBc: string;
     projetAssocie?: string;
-    montantPo: number;
-    montantFacture: number;
-    montantRestant: number;
+    montantPo: number | string;
+    montantFacture: number | string;
+    montantRestant: number | string;
   },
   lignes: {
     description?: string;
-    montantHt: number;
+    montantHt: number | string;
     dateFacture?: string;
     statutPaiement: string;
   }[],
@@ -148,8 +150,6 @@ export async function generateBcPdf(
   const { default: jsPDF }     = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
   const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
   const statutLabel = (s: string) =>
@@ -176,10 +176,10 @@ export async function generateBcPdf(
   const y = 42;
   [
     ["Projet associé",  bc.projetAssocie ?? "—"],
-    ["Montant PO",      fmt(bc.montantPo)],
-    ["Montant facturé", fmt(bc.montantFacture)],
-    ["Montant restant", fmt(bc.montantRestant)],
-    ["Statut",          bc.montantRestant === 0 ? "Soldé" : "En cours"],
+    ["Montant PO",      formatMontant(bc.montantPo)],
+    ["Montant facturé", formatMontant(bc.montantFacture)],
+    ["Montant restant", formatMontant(bc.montantRestant)],
+    ["Statut",          isBcSolde(bc.montantRestant) ? "Soldé" : "En cours"],
   ].forEach(([label, value], i) => {
     doc.setTextColor(120);
     doc.text(`${label} :`, 14, y + i * 8);
@@ -196,7 +196,7 @@ export async function generateBcPdf(
     head: [["Description", "Montant HT", "Date facture", "Paiement"]],
     body: lignes.map((l) => [
       l.description ?? "—",
-      fmt(l.montantHt),
+      formatMontant(l.montantHt),
       fmtDate(l.dateFacture),
       statutLabel(l.statutPaiement),
     ]),

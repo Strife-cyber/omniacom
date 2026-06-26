@@ -12,7 +12,7 @@ import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
 import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
-import { formatMontant } from "@/lib/utils";
+import { formatMontant, isBcSolde } from "@/lib/utils";
 
 export default function SuiviPaiementPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -84,7 +84,7 @@ export default function SuiviPaiementPage() {
             </THead>
             <TBody>
               {bons.map((b) => {
-                const solde = b.montantRestant === 0;
+                const solde = isBcSolde(b.montantRestant);
                 return (
                   <TR key={b.id}>
                     <TD className="font-mono font-medium">{b.numeroBc}</TD>

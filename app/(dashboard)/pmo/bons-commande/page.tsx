@@ -15,7 +15,7 @@ import { Loader } from "@/components/app/brand/Logo";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
 import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
-import { formatMontant } from "@/lib/utils";
+import { formatMontant, isBcSolde, sumAmounts } from "@/lib/utils";
 import type { BonDeCommande } from "@/types";
 
 const EMPTY = { numeroBc: "", projetAssocie: "", montantPo: "", montantFacture: "", montantRestant: "" };
@@ -39,11 +39,11 @@ export default function BonsCommandePage() {
     [allItems, q],
   );
 
-  const totalPO       = allItems.reduce((s, b) => s + b.montantPo, 0);
-  const totalFacture  = allItems.reduce((s, b) => s + b.montantFacture, 0);
-  const totalRestant  = allItems.reduce((s, b) => s + b.montantRestant, 0);
+  const totalPO       = sumAmounts(allItems, (b) => b.montantPo);
+  const totalFacture  = sumAmounts(allItems, (b) => b.montantFacture);
+  const totalRestant  = sumAmounts(allItems, (b) => b.montantRestant);
   const tauxFactu     = totalPO ? (totalFacture / totalPO) * 100 : 0;
-  const nbSoldes      = allItems.filter((b) => b.montantRestant === 0).length;
+  const nbSoldes      = allItems.filter((b) => isBcSolde(b.montantRestant)).length;
 
   function set(k: string, v: string) { setForm((prev) => ({ ...prev, [k]: v })); }
   function resetForm() { setForm(EMPTY); }
@@ -73,7 +73,7 @@ export default function BonsCommandePage() {
         "Montant PO":      b.montantPo,
         "Montant facturé": b.montantFacture,
         "Montant restant": b.montantRestant,
-        "Statut":          b.montantRestant === 0 ? "Soldé" : "En cours",
+        "Statut":          isBcSolde(b.montantRestant) ? "Soldé" : "En cours",
       })),
       "bons-de-commande",
     );
@@ -90,7 +90,7 @@ export default function BonsCommandePage() {
         b.montantPo,
         b.montantFacture,
         b.montantRestant,
-        b.montantRestant === 0 ? "Soldé" : "En cours",
+        isBcSolde(b.montantRestant) ? "Soldé" : "En cours",
       ]),
       "bons-de-commande",
     );
@@ -179,7 +179,7 @@ export default function BonsCommandePage() {
               </THead>
               <TBody>
                 {rows.map((b) => {
-                  const solde = b.montantRestant === 0;
+                  const solde = isBcSolde(b.montantRestant);
                   return (
                     <TR key={b.id}>
                       <TD className="font-mono font-medium text-ink">{b.numeroBc}</TD>

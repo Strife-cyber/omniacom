@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/app/primitives/misc";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/app/primitives/Table";
 import { useAsync } from "@/hooks/use-async";
 import { api } from "@/lib/api";
-import { formatMontant, formatDateShort } from "@/lib/utils";
+import { formatMontant, formatDateShort, isBcSolde } from "@/lib/utils";
 
 const STATUT_PAIEMENT_LABEL: Record<string, string> = {
   PAID:       "Payé",
@@ -85,7 +85,7 @@ export default function BonCommandeDetailPage() {
   if (lb) return <Loader label="Chargement du bon de commande…" />;
   if (!bc) return <div className="py-16 text-center text-muted">Bon de commande introuvable.</div>;
 
-  const solde = bc.montantRestant === 0;
+  const solde = isBcSolde(bc.montantRestant);
 
   return (
     <>
